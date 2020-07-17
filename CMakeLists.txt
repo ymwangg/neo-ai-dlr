@@ -82,6 +82,7 @@ endif()
 
 set(TVM_SRC "${PROJECT_SOURCE_DIR}/3rdparty/tvm")
 set(JSON_SRC "${PROJECT_SOURCE_DIR}/3rdparty/json")
+set(LIBNPY_SRC "${PROJECT_SOURCE_DIR}/3rdparty/libnpy")
 set(TREELITE_SRC "${PROJECT_SOURCE_DIR}/3rdparty/treelite")
 set(DMLC_CORE_SRC "${TVM_SRC}/3rdparty/dmlc-core")
 set(DLPACK_SRC "${TVM_SRC}/3rdparty/dlpack")
@@ -398,6 +399,7 @@ foreach(__srcpath ${DEMO_SRCS})
   string(REPLACE ".cc" "" __execname ${__srcname})
   list(APPEND DEMO_EXECS ${__execname})
   add_executable(${__execname} ${__srcpath} $<TARGET_OBJECTS:objdlr>)
+  target_include_directories(${__execname} PUBLIC ${LIBNPY_SRC})
   if (ANDROID_BUILD)
     target_link_libraries(${__execname} PRIVATE treelite_runtime_static tvm_runtime_static ${DLR_LINKER_LIBS} -fuse-ld=gold)
   else (ANDROID_BUILD)
@@ -442,6 +444,48 @@ if(NOT(AAR_BUILD))
     message(STATUS "Added Test: " ${__execname})
   endforeach()
 
+  set(CAT_IMAGE ${CMAKE_CURRENT_BINARY_DIR}/cat224-3.txt)
+  if(NOT EXISTS ${CAT_IMAGE})
+  download_file(
+    https://neo-ai-dlr-test-artifacts.s3-us-west-2.amazonaws.com/tflite-models/cat224-3.txt
+    ${CAT_IMAGE}
+    SHA1
+    e35e82f3371bed37caa7ecece417f50876414077
+  )
+  endif()
+  
+  # Download compiled model for unit tests
+  set(RESNET_MODEL ${CMAKE_CURRENT_BINARY_DIR}/resnet_v1_5_50)
+  if(NOT IS_DIRECTORY ${RESNET_MODEL})
+    file(MAKE_DIRECTORY ${RESNET_MODEL})
+    download_file(
+      https://neo-ai-dlr-test-artifacts.s3-us-west-2.amazonaws.com/compiled-models/resnet_v1.5_50-ml_c4.tar.gz
+      /tmp/resnet_v1.5_50-ml_c4.tar.gz
+      SHA1
+      447c22239e63882a2bc754db550131756373d4df
+    )
+    # this is OS-agnostic
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf /tmp/resnet_v1.5_50-ml_c4.tar.gz
+                    WORKING_DIRECTORY ${RESNET_MODEL})
+    file(REMOVE /tmp/resnet_v1.5_50-ml_c4.tar.gz)
+  endif()
+
+  set(XGBOOST_TEST_MODEL ${CMAKE_CURRENT_BINARY_DIR}/xgboost_test)
+  if(NOT IS_DIRECTORY ${XGBOOST_TEST_MODEL})
+    file(MAKE_DIRECTORY ${XGBOOST_TEST_MODEL})
+    download_file(
+      https://neo-ai-dlr-test-artifacts.s3-us-west-2.amazonaws.com/compiled-models/xgboost_test.tar.gz
+      /tmp/xgboost_test.tar.gz
+      SHA1
+      4c8ac5f20db6c7c6d674dd2ac9d9e14ce887281e
+    )
+    # this is OS-agnostic
+    execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf /tmp/xgboost_test.tar.gz
+                    WORKING_DIRECTORY ${XGBOOST_TEST_MODEL})
+    file(REMOVE /tmp/xgboost_test.tar.gz)
+  endif()
+
+
   if(WITH_TENSORFLOW_LITE_LIB)
       # Download Test TFLite model
       file(MAKE_DIRECTORY mobilenet_v2_0.75_224)
@@ -485,14 +529,6 @@ if(NOT(AAR_BUILD))
         6746c34f54aad3df24d9fc5f632ebd9dfc64ed69
       )
   endif() # WITH_HEXAGON
-  if(WITH_TENSORFLOW_LITE_LIB OR WITH_TENSORFLOW_LIB OR WITH_HEXAGON)
-      download_file(
-        https://neo-ai-dlr-test-artifacts.s3-us-west-2.amazonaws.com/tflite-models/cat224-3.txt
-        ./cat224-3.txt
-        SHA1
-        e35e82f3371bed37caa7ecece417f50876414077
-      )
-  endif() # WITH_TENSORFLOW_LITE_LIB OR WITH_TENSORFLOW_LIB OR WITH_HEXAGON
 endif()
 # Group sources
 #auto_source_group("${SOURCES}")

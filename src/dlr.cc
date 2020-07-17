@@ -23,7 +23,7 @@ extern "C" int GetDLRNumInputs(DLRModelHandle* handle, int* num_inputs) {
   API_BEGIN();
   DLRModel* model = static_cast<DLRModel*>(*handle);
   CHECK(model != nullptr) << "model is nullptr, create it first";
-  model->GetNumInputs(num_inputs);
+  *num_inputs = model->GetNumInputs();
   API_END();
 }
 
@@ -31,7 +31,7 @@ extern "C" int GetDLRNumWeights(DLRModelHandle* handle, int* num_weights) {
   API_BEGIN();
   DLRModel* model = static_cast<DLRModel*>(*handle);
   CHECK(model != nullptr) << "model is nullptr, create it first";
-  model->GetNumWeights(num_weights);
+  *num_weights = model->GetNumWeights();
   API_END();
 }
 
@@ -119,7 +119,7 @@ extern "C" int GetDLRNumOutputs(DLRModelHandle* handle, int* num_outputs) {
   API_BEGIN();
   DLRModel* model = static_cast<DLRModel*>(*handle);
   CHECK(model != nullptr) << "model is nullptr, create it first";
-  model->GetNumOutputs(num_outputs);
+  *num_outputs = model->GetNumOutputs();
   API_END();
 }
 
@@ -135,8 +135,12 @@ extern "C" int GetDLROutputName(DLRModelHandle* handle, const int index, const c
   API_BEGIN();
   DLRModel* model = static_cast<DLRModel*>(*handle);
   CHECK(model != nullptr) << "model is nullptr, create it first";
-  *name = model->GetOutputName(index);
-  CHECK(*name != nullptr) << "name is nullptr, check for metadata file and see if it has output node data";
+  try {
+    *name = model->GetOutputName(index);
+  } catch (dmlc::Error& e) {
+    LOG(ERROR) << e.what();
+    return -1;
+  }
   API_END();
 }
 
@@ -144,8 +148,12 @@ extern "C" int GetDLROutputIndex(DLRModelHandle* handle, const char* name, int* 
   API_BEGIN();
   DLRModel* model = static_cast<DLRModel*>(*handle);
   CHECK(model != nullptr) << "model is nullptr, create it first";
-  *index = model->GetOutputIndex(name);
-  CHECK(*index != -1) << "name is nullptr, check for metadata file and see if it has output node data";
+  try {
+    *index = model->GetOutputIndex(name);
+  } catch (dmlc::Error& e) {
+    LOG(ERROR) << e.what();
+    return -1;
+  }
   API_END();
 }
 
@@ -320,9 +328,9 @@ extern "C" int GetDLRBackend(DLRModelHandle* handle, const char** name) {
 
 extern "C" int GetDLRVersion(const char** out) {
   API_BEGIN();
-  std::string version_str = std::to_string(DLR_MAJOR) + "." +
-                            std::to_string(DLR_MINOR) + "." +
-                            std::to_string(DLR_PATCH);
+  static const std::string version_str = std::to_string(DLR_MAJOR) + "." +
+                                         std::to_string(DLR_MINOR) + "." +
+                                         std::to_string(DLR_PATCH);
   *out = version_str.c_str();
   API_END();
 }
